@@ -6,27 +6,32 @@ pygame.mixer.init()
 pew_pew_sound = pygame.mixer.Sound("pew_pew.mp3")
 pew_pew_sound.set_volume(1.0)  # Define o volume do som
 obstaculos_pontuados = []
+direcoes_obstaculos = []
 
 # Adiciona música de fundo
 pygame.mixer.music.load("musicafundo.mp3")
-volume_musica = 0.5
-pygame.mixer.music.set_volume(volume_musica)  # Volume da música de fundo (0.0 a 1.0)
+volume_musica = 0.1  # Inicia com 10% do volume
+pygame.mixer.music.set_volume(volume_musica)
 pygame.mixer.music.play(-1)  # -1 faz a música repetir infinitamente
 
+# Substitua pelo modo padrão (defina largura/altura manualmente):
 largura, altura = 800, 600
 tela = pygame.display.set_mode((largura, altura))
+
 clock = pygame.time.Clock()
 
-jogador = pygame.Rect(100, 500, 50, 50)
+jogador = pygame.Rect(100, 500, int(50 * 1.5), int(50 * 1.5))
 velocidade = 5
 obstaculos = []
 computador = pygame.Rect(600, 250, 150, 50)
 
+# Ao criar obstáculos:
 def criar_obstaculo():
     x = random.randint(0, largura - 50)
-    y = 0  # Sempre no topo da tela
+    y = 0
     obstaculo = pygame.Rect(x, y, 50, 50)
     obstaculos.append(obstaculo)
+    direcoes_obstaculos.append(random.choice([-1, 1]))
 
 # Cria obstáculos aleatórios
 for _ in range(5):
@@ -47,11 +52,24 @@ perdeu = False
 
 # Carregue a imagem da moto
 imagem_moto = pygame.image.load("moto.png").convert_alpha()
-imagem_moto = pygame.transform.smoothscale(imagem_moto, (50, 50))  # Usa smoothscale para melhor qualidade
+imagem_moto = pygame.transform.smoothscale(imagem_moto, (int(50 * 1.5), int(50 * 1.5)))  # Usa smoothscale para melhor qualidade
+
+# Adicione após definir largura e altura:
+imagem_fundo = pygame.image.load("nublado-estrada.png").convert()
+imagem_fundo = pygame.transform.scale(imagem_fundo, (largura, altura))
 
 def reiniciar_jogo():
     global jogador, obstaculos, pontuacao, perdeu, frame_count, obstaculos_por_intervalo, tempo_ultimo_aumento, tempo_ultimo_ponto, obstaculos_pontuados, tempo_inicio
-    jogador = pygame.Rect(100, 500, 50, 50)
+    jogador = pygame.Rect(100, 500, int(50 * 1.5), int(50 * 1.5))
+    # Garante que o jogador não ultrapasse as bordas ao reiniciar
+    if jogador.left < 0:
+        jogador.left = 0
+    if jogador.right > largura:
+        jogador.right = largura
+    if jogador.top < 0:
+        jogador.top = 0
+    if jogador.bottom > altura:
+        jogador.bottom = altura
     obstaculos = []
     pontuacao = 0
     perdeu = False
@@ -90,22 +108,36 @@ while rodando:
 
     if not perdeu:
         teclas = pygame.key.get_pressed()
+        # Movimento horizontal limitado pelas bordas
         if teclas[pygame.K_a] and jogador.left > 0:
             jogador.x -= velocidade
         if teclas[pygame.K_d] and jogador.right < largura:
             jogador.x += velocidade
-
-        # Jogador descendo
+        # Garante que o jogador não ultrapasse as bordas após o movimento
+        if jogador.left < 0:
+            jogador.left = 0
+        if jogador.right > largura:
+            jogador.right = largura
+        # Movimento vertical limitado pela borda inferior
         if jogador.bottom < altura:
             jogador.y += velocidade
+        if jogador.bottom > altura:
+            jogador.bottom = altura
 
         # Movimento do computador descendo
         if computador.bottom < altura:
             computador.y += velocidade
 
         som_tocado = False
-        for obstaculo in obstaculos:
-            obstaculo.y += velocidade
+        for i, obstaculo in enumerate(obstaculos):
+            if pontuacao > 200:
+                obstaculo.y += velocidade
+                obstaculo.x += direcoes_obstaculos[i] * (velocidade // 2)
+                # Garante que o obstáculo não ultrapasse as bordas
+                if obstaculo.left < 0 or obstaculo.right > largura:
+                    direcoes_obstaculos[i] *= -1
+            else:
+                obstaculo.y += velocidade
 
             if obstaculo.y > jogador.y + jogador.height and obstaculo not in obstaculos_pontuados:
                 pew_pew_sound.play()
@@ -121,7 +153,7 @@ while rodando:
         # Aumenta a quantidade de obstáculos a cada 10 segundos
         tempo_atual = pygame.time.get_ticks()
         if tempo_atual - tempo_ultimo_aumento >= 10000:  # 10 segundos
-            obstaculos_por_intervalo += 1
+            obstaculos_por_intervalo += max(1, int(1 * 0.7))  # Diminui o aumento em 30%
             tempo_ultimo_aumento = tempo_atual
 
         # Pontuação: a cada 5 segundos, ganha 50 pontos
@@ -130,7 +162,10 @@ while rodando:
             tempo_ultimo_ponto = tempo_atual
 
         # Remove obstáculos que saíram da tela
-        obstaculos = [o for o in obstaculos if o.top < altura]
+        obstaculos_e_direcoes = [(o, d) for o, d in zip(obstaculos, direcoes_obstaculos) if o.top < altura]
+        obstaculos, direcoes_obstaculos = zip(*obstaculos_e_direcoes) if obstaculos_e_direcoes else ([], [])
+        obstaculos = list(obstaculos)
+        direcoes_obstaculos = list(direcoes_obstaculos)
 
         # Verifica colisão
         for obstaculo in obstaculos:
@@ -138,7 +173,8 @@ while rodando:
                 pew_pew_sound.play()  # Toca o som ao colidir
                 perdeu = True
 
-    tela.fill((255, 255, 255))
+    # tela.blit(imagem_estrada, (0, 0))  # Desenha a imagem de fundo
+    tela.blit(imagem_fundo, (0, 0))  # Desenha a imagem de fundo
     # pygame.draw.rect(tela, (0, 0, 255), jogador)
     tela.blit(imagem_moto, (jogador.x, jogador.y))
     for obstaculo in obstaculos:
@@ -156,10 +192,10 @@ while rodando:
     texto_tempo = fonte.render(f"Tempo: {segundos}s", True, (0, 0, 0))
     tela.blit(texto_tempo, (largura - texto_tempo.get_width() - 10, 10))
 
-    # Exibe campo de configuração de volume
-    fonte_config = pygame.font.SysFont(None, 28)
-    texto_volume = fonte_config.render(f"Volume: {int(volume_musica*100)}%", True, (0, 0, 0))
-    tela.blit(texto_volume, (largura - texto_volume.get_width() - 10, 50))
+    # Exibe volume atual
+    fonte_volume = pygame.font.SysFont(None, 28)
+    texto_volume = fonte_volume.render(f"Volume: {int(volume_musica * 100)}%", True, (0, 0, 0))
+    tela.blit(texto_volume, (10, 50))
 
     if perdeu:
         fonte = pygame.font.SysFont(None, 60)
