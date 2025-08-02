@@ -130,7 +130,7 @@ while rodando:
 
         som_tocado = False
         for i, obstaculo in enumerate(obstaculos):
-            if pontuacao > 200:
+            if pontuacao > 100:
                 obstaculo.y += velocidade
                 obstaculo.x += direcoes_obstaculos[i] * (velocidade // 2)
                 # Garante que o obstáculo não ultrapasse as bordas
