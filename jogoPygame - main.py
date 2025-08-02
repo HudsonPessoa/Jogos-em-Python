@@ -7,6 +7,12 @@ pew_pew_sound = pygame.mixer.Sound("pew_pew.mp3")
 pew_pew_sound.set_volume(1.0)  # Define o volume do som
 obstaculos_pontuados = []
 
+# Adiciona música de fundo
+pygame.mixer.music.load("musicafundo.mp3")
+volume_musica = 0.5
+pygame.mixer.music.set_volume(volume_musica)  # Volume da música de fundo (0.0 a 1.0)
+pygame.mixer.music.play(-1)  # -1 faz a música repetir infinitamente
+
 largura, altura = 800, 600
 tela = pygame.display.set_mode((largura, altura))
 clock = pygame.time.Clock()
@@ -58,6 +64,15 @@ def reiniciar_jogo():
 
 tempo_inicio = pygame.time.get_ticks()
 
+def alterar_volume(delta):
+    """
+    Altera o volume da música de fundo.
+    delta: valor a ser somado ou subtraído do volume atual (ex: +0.1 ou -0.1)
+    """
+    global volume_musica
+    volume_musica = min(1.0, max(0.0, volume_musica + delta))
+    pygame.mixer.music.set_volume(volume_musica)
+
 while rodando:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -66,6 +81,12 @@ while rodando:
             mouse_pos = pygame.mouse.get_pos()
             if botao_restart.collidepoint(mouse_pos):
                 reiniciar_jogo()
+        # Configuração de volume usando a função
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                alterar_volume(+0.1)
+            if event.key == pygame.K_DOWN:
+                alterar_volume(-0.1)
 
     if not perdeu:
         teclas = pygame.key.get_pressed()
@@ -134,6 +155,11 @@ while rodando:
         segundos = (tempo_atual - tempo_inicio) // 1000
     texto_tempo = fonte.render(f"Tempo: {segundos}s", True, (0, 0, 0))
     tela.blit(texto_tempo, (largura - texto_tempo.get_width() - 10, 10))
+
+    # Exibe campo de configuração de volume
+    fonte_config = pygame.font.SysFont(None, 28)
+    texto_volume = fonte_config.render(f"Volume: {int(volume_musica*100)}%", True, (0, 0, 0))
+    tela.blit(texto_volume, (largura - texto_volume.get_width() - 10, 50))
 
     if perdeu:
         fonte = pygame.font.SysFont(None, 60)
